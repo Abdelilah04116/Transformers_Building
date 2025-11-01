@@ -1,0 +1,1 @@
+hello world\nthis is a tiny dataset for transformer demo.\n
