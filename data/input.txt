@@ -1,1 +1,6 @@
-hello world\nthis is a tiny dataset for transformer demo.\n
+hello world
+this is a tiny dataset for transformer demo.
+we are learning how transformers work.
+this dataset is small but good for debugging.
+deep learning is fun.
+let's build a tiny gpt model.
