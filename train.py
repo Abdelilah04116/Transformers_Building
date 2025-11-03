@@ -87,7 +87,7 @@ if __name__ == "__main__":
         vocab_tgt=tokenizer_tgt.vocab_size, 
         embed_dim=cfg.embed_dim, 
         block_size=cfg.block_size,
-        hidden_dim=cfg.ff_hidden_dim,
+        ff_hidden_dim=cfg.ff_hidden_dim,  # ✅ Changé de hidden_dim à ff_hidden_dim
         dropout=cfg.dropout
     )
     optimizer = create_optimizer(model, cfg.lr, getattr(cfg, 'weight_decay', 0.01))
