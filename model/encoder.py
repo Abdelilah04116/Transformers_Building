@@ -55,6 +55,13 @@ class Encoder(nn.Module):
         self.final_ln = LayerNorm(embed_dim)
         self.dropout = nn.Dropout(dropout)
         
+        # Attention pooling pour meilleure représentation
+        self.attention_pool = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim),
+            nn.Tanh(),
+            nn.Linear(embed_dim, 1)
+        )
+        
         # Tête de classification
         self.classifier = nn.Sequential(
             nn.Linear(embed_dim, ff_hidden_dim // 2),
@@ -65,7 +72,7 @@ class Encoder(nn.Module):
         
         # Initialisation des poids
         self.apply(self._init_weights)
-        
+    
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
@@ -74,11 +81,12 @@ class Encoder(nn.Module):
         elif isinstance(module, nn.Embedding):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
     
-    def forward(self, x, y=None):
+    def forward(self, x, y=None, attention_mask=None):
         """
         Args:
             x: (batch, seq_len) indices de tokens
             y: (batch,) labels pour classification (optionnel)
+            attention_mask: (batch, seq_len) masque pour ignorer le padding (optionnel)
         Returns:
             logits: (batch, num_classes)
             loss: scalaire si y fourni, sinon None
@@ -94,8 +102,21 @@ class Encoder(nn.Module):
         
         emb = self.final_ln(emb)
         
-        # Pooling global (moyenne sur la séquence)
-        pooled = emb.mean(dim=1)  # (batch, embed_dim)
+        # Attention pooling (plus efficace que mean pooling)
+        # Calculer les scores d'attention
+        attn_scores = self.attention_pool(emb)  # (batch, seq_len, 1)
+        
+        # Appliquer le masque si fourni (ignorer les tokens de padding)
+        if attention_mask is not None:
+            # attention_mask: 1 pour tokens réels, 0 pour padding
+            attn_mask = attention_mask.unsqueeze(-1).float()  # (batch, seq_len, 1)
+            attn_scores = attn_scores.masked_fill(attn_mask == 0, float('-inf'))
+        
+        # Softmax pour obtenir les poids d'attention
+        attn_weights = F.softmax(attn_scores, dim=1)  # (batch, seq_len, 1)
+        
+        # Pooling pondéré par attention
+        pooled = (emb * attn_weights).sum(dim=1)  # (batch, embed_dim)
         
         # Classification
         logits = self.classifier(pooled)  # (batch, num_classes)

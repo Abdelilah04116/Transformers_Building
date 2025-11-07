@@ -126,12 +126,11 @@ streamlit run ui_streamlit.py
 **Rôle principal** : Modèle de traduction séquence-à-séquence.
 
 **Classes** :
-- `TranslationModel(vocab_src, vocab_tgt, embed_dim, block_size, hidden_dim, dropout)`
-  - Architecture encodeur-décodeur simplifiée pour traduction
-  - Encode la séquence source avec convolutions 1D + pooling
-  - Génère les tokens cibles séquentiellement
-  - Méthode `forward(src, tgt=None)` : encode source et prédit tokens cibles
-  - Méthode `generate(src, max_length=None)` : génère la traduction complète token par token
+- `TranslationModel(vocab_src, vocab_tgt, embed_dim, block_size, num_layers, num_heads, ff_hidden_dim, dropout)`
+  - Transformer encoder-decoder complet avec self-attention et cross-attention
+  - Empile `TransformerEncoderBlock` et `TransformerDecoderBlock` pré-normalisés
+  - Méthode `forward(src, tgt=None)` : encode source, décode cible, retourne logits et loss optionnelle
+  - Méthode `generate(src, max_length=None)` : génération auto-régressive avec température et token de fin
 
 ---
 
@@ -448,7 +447,7 @@ streamlit run ui_streamlit.py
 - Données : `data/sentiment_data.txt`
 
 ### TranslationModel
-- Architecture : Encodeur-décodeur simplifié avec convolutions
+- Architecture : Transformer encoder-decoder empilant self-attention et cross-attention
 - Usage : Traduction séquence-à-séquence EN-FR
 - Données : `data/translation_data.txt`
 

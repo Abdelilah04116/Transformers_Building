@@ -83,12 +83,14 @@ if __name__ == "__main__":
     trans_dl = create_dataloader(trans_ds, cfg.batch_size)
     # TranslationModel amélioré
     model = TranslationModel(
-        vocab_src=tokenizer_src.vocab_size, 
-        vocab_tgt=tokenizer_tgt.vocab_size, 
-        embed_dim=cfg.embed_dim, 
+        vocab_src=tokenizer_src.vocab_size,
+        vocab_tgt=tokenizer_tgt.vocab_size,
+        embed_dim=cfg.embed_dim,
         block_size=cfg.block_size,
-        ff_hidden_dim=cfg.ff_hidden_dim,  # ✅ Changé de hidden_dim à ff_hidden_dim
-        dropout=cfg.dropout
+        num_layers=cfg.num_layers,
+        num_heads=cfg.num_heads,
+        ff_hidden_dim=cfg.ff_hidden_dim,
+        dropout=cfg.dropout,
     )
     optimizer = create_optimizer(model, cfg.lr, getattr(cfg, 'weight_decay', 0.01))
     criterion = nn.CrossEntropyLoss()

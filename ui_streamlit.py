@@ -174,12 +174,18 @@ elif task == "Classification de sentiment (Encoder)":
                 
                 with st.spinner("Analyse en cours..."):
                     ids = tokenizers['encoder'].encode(text_input)
+                    original_len = len(ids)
                     ids = ids[:block_size]
                     if len(ids) < block_size:
                         ids = ids + [0] * (block_size - len(ids))
                     x = torch.tensor(ids, dtype=torch.long).unsqueeze(0).to(device)
                     
-                    logits, _ = model(x, y=None)
+                    # Créer le masque d'attention
+                    attention_mask = torch.zeros(block_size, dtype=torch.long)
+                    attention_mask[:original_len] = 1
+                    attention_mask = attention_mask.unsqueeze(0).to(device)
+                    
+                    logits, _ = model(x, y=None, attention_mask=attention_mask)
                     probs = torch.softmax(logits, dim=-1)
                     pred_class = torch.argmax(logits, dim=-1).item()
                 
@@ -246,13 +252,17 @@ elif task == "Traduction EN-FR (TranslationModel)":
                     tokenizer_src = tokenizers['translation_src'] if direction == "Anglais → Français" else tokenizers['translation_tgt']
                     tokenizer_tgt = tokenizers['translation_tgt'] if direction == "Anglais → Français" else tokenizers['translation_src']
                     
+                    model_block_size = min(block_size, cfg.block_size)
+
                     model = TranslationModel(
                         vocab_src=tokenizer_src.vocab_size,
                         vocab_tgt=tokenizer_tgt.vocab_size,
                         embed_dim=cfg.embed_dim,
-                        block_size=block_size,
-                        hidden_dim=cfg.ff_hidden_dim,
-                        dropout=cfg.dropout
+                        block_size=model_block_size,
+                        num_layers=cfg.num_layers,
+                        num_heads=cfg.num_heads,
+                        ff_hidden_dim=cfg.ff_hidden_dim,
+                        dropout=cfg.dropout,
                     ).to(device)
                     
                     checkpoint = torch.load(checkpoint_path, map_location=device)
@@ -262,18 +272,25 @@ elif task == "Traduction EN-FR (TranslationModel)":
                 with st.spinner("Traduction en cours..."):
                     ids = tokenizer_src.encode(text_input)
                     # Utiliser block_size du modèle ou celui de l'interface
-                    max_block = min(block_size, cfg.block_size)
+                    max_block = model_block_size
                     ids = ids[:max_block]
                     if len(ids) < max_block:
                         ids = ids + [0] * (max_block - len(ids))
                     x = torch.tensor(ids, dtype=torch.long).unsqueeze(0).to(device)
                     
                     # Générer la séquence de traduction
-                    generated_tokens = model.generate(x, max_length=max_block)
-                    
-                    # Décoder les tokens générés
-                    # Filtrer les tokens invalides (0 et tokens hors vocabulaire)
-                    valid_tokens = [t for t in generated_tokens if t != 0 and t < tokenizer_tgt.vocab_size]
+                    generated_tensor = model.generate(x, max_length=max_block)
+
+                    # On travaille sur le premier (et unique) élément du batch
+                    generated_tokens = generated_tensor.squeeze(0).tolist()
+
+                    # Retirer le token BOS initial (supposé être 1)
+                    if generated_tokens and generated_tokens[0] == 1:
+                        generated_tokens = generated_tokens[1:]
+
+                    # Filtrer les tokens invalides (EOS=0 et hors vocabulaire)
+                    valid_tokens = [t for t in generated_tokens if 0 < t < tokenizer_tgt.vocab_size]
+
                     if valid_tokens:
                         translated_text = tokenizer_tgt.decode(valid_tokens)
                         # Nettoyer le texte (enlever caractères spéciaux étranges)
