@@ -483,7 +483,7 @@ Voir `requirements.txt` pour la liste complète. Principales dépendances :
 
 ## Auteur
 
-Réalisé par Ourti Abdelilah 
+Réalisé par Ourti Abdelilah -----------------------------
 
 ---
 
